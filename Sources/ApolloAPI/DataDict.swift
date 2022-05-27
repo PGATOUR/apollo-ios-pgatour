@@ -1,7 +1,7 @@
 /// A structure that wraps the underlying data dictionary used by `SelectionSet`s.
 public struct DataDict: Hashable {
 
-  public let _data: JSONObject
+  public var _data: JSONObject
   public let _variables: GraphQLOperation.Variables?
 
   @inlinable public init(
@@ -13,7 +13,8 @@ public struct DataDict: Hashable {
   }
 
   @inlinable public subscript<T: AnyScalarType>(_ key: String) -> T {
-    _data[key] as! T
+    get { _data[key] as! T }
+    set { _data[key] = newValue as! JSONValue? }
   }
   
   @inlinable public subscript<T: AnySelectionSet>(_ key: String) -> T {
@@ -41,7 +42,7 @@ public struct DataDict: Hashable {
     hasher.combine(_variables?.jsonEncodableValue?.jsonValue)
   }
 
-  public static func == (lhs: DataDict, rhs: DataDict) -> Bool {
+  public static func ==(lhs: DataDict, rhs: DataDict) -> Bool {
     lhs._data == rhs._data &&
     lhs._variables?.jsonEncodableValue?.jsonValue == rhs._variables?.jsonEncodableValue?.jsonValue
   }
