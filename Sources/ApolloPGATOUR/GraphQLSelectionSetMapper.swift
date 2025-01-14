@@ -2,37 +2,53 @@
 import ApolloAPI
 #endif
 
-/// An accumulator that maps executed data to create a `SelectionSet`.
-@_spi(Execution)
-public final class GraphQLSelectionSetMapper<T: SelectionSet>: GraphQLResultAccumulator {
+/// An accumulator that converts executed data to the correct values to create a `SelectionSet`.
+final class GraphQLSelectionSetMapper<T: SelectionSet>: GraphQLResultAccumulator {
 
-  let dataDictMapper: DataDictMapper
+  let requiresCacheKeyComputation: Bool = false
 
-  public var requiresCacheKeyComputation: Bool {
-    dataDictMapper.requiresCacheKeyComputation
+  let handleMissingValues: HandleMissingValues
+
+  enum HandleMissingValues {
+    case disallow
+    case allowForOptionalFields
+    /// Using this option will result in an unsafe `SelectionSet` that will crash
+    /// when a required field that has missing data is accessed.
+    case allowForAllFields
   }
 
-  public var handleMissingValues: DataDictMapper.HandleMissingValues {
-    dataDictMapper.handleMissingValues
+  init(
+    handleMissingValues: HandleMissingValues = .disallow
+  ) {
+    self.handleMissingValues = handleMissingValues
   }
 
-  public init(handleMissingValues: DataDictMapper.HandleMissingValues = .disallow) {
-    self.dataDictMapper = DataDictMapper(handleMissingValues: handleMissingValues)
+  func accept(scalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
+    switch info.field.type.namedType {
+    case let .scalar(decodable as any JSONDecodable.Type):
+      // This will convert a JSON value to the expected value type.
+      return try decodable.init(_jsonValue: scalar)._asAnyHashable
+    default:
+      preconditionFailure()
+    }
   }
 
-  public func accept(scalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
-    try dataDictMapper.accept(scalar: scalar, info: info)
+  func accept(customScalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
+    switch info.field.type.namedType {
+    case let .customScalar(decodable as any JSONDecodable.Type):
+      // This will convert a JSON value to the expected value type,
+      // which could be a custom scalar or an enum.
+      return try decodable.init(_jsonValue: customScalar)._asAnyHashable
+    default:
+      preconditionFailure()
+    }
   }
 
-  public func accept(customScalar: AnyHashable, info: FieldExecutionInfo) throws -> AnyHashable? {
-    try dataDictMapper.accept(customScalar: customScalar, info: info)
-  }
-
-  public func acceptNullValue(info: FieldExecutionInfo) -> AnyHashable? {
+  func acceptNullValue(info: FieldExecutionInfo) -> AnyHashable? {
     return DataDict._NullValue
   }
 
-  public func acceptMissingValue(info: FieldExecutionInfo) throws -> AnyHashable? {
+  func acceptMissingValue(info: FieldExecutionInfo) throws -> AnyHashable? {
     switch handleMissingValues {
     case .allowForOptionalFields where info.field.type.isNullable: fallthrough
     case .allowForAllFields:
@@ -43,31 +59,30 @@ public final class GraphQLSelectionSetMapper<T: SelectionSet>: GraphQLResultAccu
     }
   }
 
-  public func accept(list: [AnyHashable?], info: FieldExecutionInfo) -> AnyHashable? {
+  func accept(list: [AnyHashable?], info: FieldExecutionInfo) -> AnyHashable? {
     return list
   }
 
-  public func accept(childObject: DataDict, info: FieldExecutionInfo) throws -> AnyHashable? {
+  func accept(childObject: DataDict, info: FieldExecutionInfo) throws -> AnyHashable? {
     return childObject
   }
 
-  public func accept(fieldEntry: AnyHashable?, info: FieldExecutionInfo) -> (key: String, value: AnyHashable)? {
+  func accept(fieldEntry: AnyHashable?, info: FieldExecutionInfo) -> (key: String, value: AnyHashable)? {
     guard let fieldEntry = fieldEntry else { return nil }
     return (info.responseKeyForField, fieldEntry)
   }
-
-  public func accept(
+ 
+  func accept(
     fieldEntries: [(key: String, value: AnyHashable)],
     info: ObjectExecutionInfo
   ) throws -> DataDict {
     return DataDict(
       data: .init(fieldEntries, uniquingKeysWith: { (_, last) in last }),
-      fulfilledFragments: info.fulfilledFragments,
-      deferredFragments: info.deferredFragments
+      fulfilledFragments: info.fulfilledFragments
     )
   }
 
-  public func finish(rootValue: DataDict, info: ObjectExecutionInfo) -> T {
+  func finish(rootValue: DataDict, info: ObjectExecutionInfo) -> T {
     return T.init(_dataDict: rootValue)
   }
 }

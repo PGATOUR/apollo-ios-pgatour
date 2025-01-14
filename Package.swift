@@ -1,8 +1,5 @@
 // swift-tools-version:5.9
-//
 // The swift-tools-version declares the minimum version of Swift required to build this package.
-// Swift 5.9 is available from Xcode 15.0.
-
 
 import PackageDescription
 
@@ -12,8 +9,7 @@ let package = Package(
     .iOS(.v12),
     .macOS(.v10_14),
     .tvOS(.v12),
-    .watchOS(.v5),
-    .visionOS(.v1),
+    .watchOS(.v5)
   ],
   products: [
     .library(name: "ApolloPGATOUR", targets: ["ApolloPGATOUR"]),
@@ -27,7 +23,7 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/stephencelis/SQLite.swift.git",
-      .upToNextMajor(from: "0.15.1")),
+      .upToNextMajor(from: "0.13.1")),
   ],
   targets: [
     .target(
@@ -37,16 +33,14 @@ let package = Package(
       ],
       resources: [
         .copy("Resources/PrivacyInfo.xcprivacy")
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .target(
       name: "ApolloAPI",
       dependencies: [],
       resources: [
         .copy("Resources/PrivacyInfo.xcprivacy")
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .target(
       name: "ApolloSQLite",
@@ -56,8 +50,7 @@ let package = Package(
       ],
       resources: [
         .copy("Resources/PrivacyInfo.xcprivacy")
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .target(
       name: "ApolloWebSocket",
@@ -66,16 +59,14 @@ let package = Package(
       ],
       resources: [
         .copy("Resources/PrivacyInfo.xcprivacy")
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .target(
       name: "ApolloTestSupport",
       dependencies: [
         "ApolloPGATOUR",
         "ApolloAPI"
-      ],
-      swiftSettings: [.enableUpcomingFeature("ExistentialAny")]
+      ]
     ),
     .plugin(
       name: "Install CLI",

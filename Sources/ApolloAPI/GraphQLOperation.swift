@@ -53,51 +53,28 @@ public struct OperationDefinition: Sendable {
   }
 }
 
-/// A unique identifier used as a key to map a deferred selection set type to an incremental
-/// response label and path.
-public struct DeferredFragmentIdentifier: Hashable {
-  let label: String
-  let fieldPath: [String]
-
-  public init(label: String, fieldPath: [String]) {
-    self.label = label
-    self.fieldPath = fieldPath
-  }
-}
-
-// MARK: - GraphQLOperation
-
 public protocol GraphQLOperation: AnyObject, Hashable {
-  typealias Variables = [String: any GraphQLOperationVariableValue]
+  typealias Variables = [String: GraphQLOperationVariableValue]
 
   static var operationName: String { get }
   static var operationType: GraphQLOperationType { get }
   static var operationDocument: OperationDocument { get }
-
-  static var deferredFragments: [DeferredFragmentIdentifier: any SelectionSet.Type]? { get }
+  static var hasDeferredFragments: Bool { get }
 
   var __variables: Variables? { get }
 
   associatedtype Data: RootSelectionSet
 }
 
-// MARK: Static Extensions
-
 public extension GraphQLOperation {
-  static var deferredFragments: [DeferredFragmentIdentifier: any SelectionSet.Type]? {
+  var __variables: Variables? {
     return nil
   }
 
-  static func deferredSelectionSetType<T: GraphQLOperation>(
-    for operation: T.Type,
-    withLabel label: String,
-    atFieldPath fieldPath: [String]
-  ) -> (any SelectionSet.Type)? {
-    return T.deferredFragments?[DeferredFragmentIdentifier(label: label, fieldPath: fieldPath)]
-  }
-
+  /// `True` if any selection set, or nested selection set, within the operation contains any
+  /// fragment marked with the `@defer` directive.
   static var hasDeferredFragments: Bool {
-    return !(deferredFragments?.isEmpty ?? true)
+    false
   }
 
   static var definition: OperationDefinition? {
@@ -111,35 +88,21 @@ public extension GraphQLOperation {
   static func ==(lhs: Self, rhs: Self) -> Bool {
     lhs.__variables?._jsonEncodableValue?._jsonValue == rhs.__variables?._jsonEncodableValue?._jsonValue
   }
-}
-
-// MARK: Instance Extensions
-
-public extension GraphQLOperation {
-  var __variables: Variables? {
-    return nil
-  }
 
   func hash(into hasher: inout Hasher) {
     hasher.combine(__variables?._jsonEncodableValue?._jsonValue)
   }
 }
 
-// MARK: - GraphQLQuery
-
 public protocol GraphQLQuery: GraphQLOperation {}
 public extension GraphQLQuery {
   @inlinable static var operationType: GraphQLOperationType { return .query }
 }
 
-// MARK: - GraphQLMutation
-
 public protocol GraphQLMutation: GraphQLOperation {}
 public extension GraphQLMutation {
   @inlinable static var operationType: GraphQLOperationType { return .mutation }
 }
-
-// MARK: - GraphQLSubscription
 
 public protocol GraphQLSubscription: GraphQLOperation {}
 public extension GraphQLSubscription {
@@ -153,10 +116,10 @@ public protocol GraphQLOperationVariableValue {
 }
 
 extension Array: GraphQLOperationVariableValue
-where Element: GraphQLOperationVariableValue & JSONEncodable & Hashable {}
+where Element: GraphQLOperationVariableValue & Hashable {}
 
 extension Dictionary: GraphQLOperationVariableValue
-where Key == String, Value == any GraphQLOperationVariableValue {
+where Key == String, Value == GraphQLOperationVariableValue {
   @inlinable public var _jsonEncodableValue: (any JSONEncodable)? { _jsonEncodableObject }
   @inlinable public var _jsonEncodableObject: JSONEncodableDictionary {
     compactMapValues { $0._jsonEncodableValue }

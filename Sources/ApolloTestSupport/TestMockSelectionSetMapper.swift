@@ -1,4 +1,3 @@
-@_spi(Execution) import Apollo
 @testable import ApolloPGATOUR
 import Foundation
 
