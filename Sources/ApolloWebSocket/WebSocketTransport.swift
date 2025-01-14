@@ -262,6 +262,7 @@ public class WebSocketTransport {
     }
   }
 
+  private func notifyErrorAllHandlers(_ error: any Error) {
     private func resetTimeoutTimer() {
         DispatchQueue.main.async { [weak self] in
             self?.timeoutTimer.mutate { timer in
